@@ -29,13 +29,6 @@ from src.dna_engine import TravelDNAProfiler, TRAVEL_PERSONALITIES
 from src.recommender import ConfidenceEngine
 from src.data_store import DestinationData, DESTINATION_CATEGORIES
 
-# Try to import Gemini client (optional)
-try:
-    from src.gemini_client import GeminiExplainer
-    GEMINI_AVAILABLE = True
-except:
-    GEMINI_AVAILABLE = False
-
 # ========== LOAD CUSTOM CSS ==========
 def load_css():
     """Load custom CSS with error handling"""
@@ -45,10 +38,8 @@ def load_css():
             with open(css_path, 'r', encoding='utf-8') as f:
                 css_content = f.read()
                 st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
-        else:
-            st.warning("CSS file not found. Using default styling.")
     except Exception as e:
-        st.error(f"CSS loading error: {e}")
+        pass
 
 # ========== INITIALIZE SESSION STATE ==========
 def init_session_state():
@@ -65,7 +56,6 @@ def init_session_state():
         'compare_destinations': [],
         'auth_mode': 'login',
         'active_tab': 0,
-        'emotion': None,
         'users_db': {
             'demo': {
                 'password': hashlib.sha256('demo123'.encode()).hexdigest(),
@@ -87,7 +77,6 @@ init_session_state()
 dna_profiler = TravelDNAProfiler()
 confidence_engine = ConfidenceEngine()
 data_store = DestinationData()
-gemini = GeminiExplainer() if GEMINI_AVAILABLE else None
 
 # ========== AUTHENTICATION UI ==========
 def render_auth():
@@ -453,6 +442,10 @@ def render_trip_planner():
     """Render trip planner - FIXED VERSION"""
     st.markdown("<h2>🧭 Plan Your Trip</h2>", unsafe_allow_html=True)
     
+    # Show warning if no DNA profile
+    if not st.session_state.user_profile:
+        st.warning("⚠️ Complete the DNA Quiz first for better recommendations!")
+    
     with st.form("planner_form"):
         st.markdown("""
         <div style="
@@ -494,7 +487,7 @@ def render_trip_planner():
         
         if submitted:
             with st.spinner("Analyzing destinations..."):
-                # Get user profile
+                # Get user profile (may be None)
                 user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
                 
                 prefs = {
@@ -514,13 +507,13 @@ def render_trip_planner():
                 if recs and len(recs) > 0:
                     st.session_state.recommendations = recs
                     st.session_state.active_tab = 2
-                    st.success(f"Found {len(recs)} matching destinations!")
+                    st.success(f"✅ Found {len(recs)} matching destinations!")
                     st.rerun()
                 else:
-                    st.error("No destinations match your criteria. Try adjusting your filters.")
+                    st.error("❌ No destinations match your criteria. Try adjusting your filters.")
 
 def render_recommendations():
-    """Render recommendations - FIXED VERSION with proper text formatting"""
+    """Render recommendations - COMPLETELY FIXED VERSION with no HTML in text"""
     if not st.session_state.recommendations:
         st.info("👆 Go to Trip Planner to get your personalized recommendations")
         return
@@ -543,79 +536,91 @@ def render_recommendations():
             color = "#ffaa00"
             badge = "Good Match"
         
-        # Trip card with proper formatting
-        st.markdown(f"""
-        <div class="trip-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
-                <h3 style="margin: 0;">{rec['name']}, {rec['country']}</h3>
-                <div style="text-align: center;">
-                    <div class="confidence-score" style="color: {color};">{conf:.0f}%</div>
-                    <span style="color: #cccccc; font-size: 0.8rem;">{badge}</span>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 20px; margin-bottom: 15px; color: #cccccc; flex-wrap: wrap;">
-                <span>📍 {rec['category']}</span>
-                <span>📅 7 Days</span>
-                <span>💰 ${rec['average_cost']:,}</span>
-                <span>⭐ Best: {rec['best_season']}</span>
-            </div>
-            
-            <p style="color: #ffffff; margin-bottom: 20px;">{rec['description']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Use Streamlit columns for the header instead of HTML
+        col_title, col_score = st.columns([3, 1])
+        with col_title:
+            st.subheader(f"{rec['name']}, {rec['country']}")
+        with col_score:
+            st.markdown(f"<h2 style='color: {color}; text-align: right;'>{conf:.0f}%</h2>", unsafe_allow_html=True)
+            st.caption(badge)
         
-        # Metrics in columns
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
+        # Use columns for details
+        col_d1, col_d2, col_d3, col_d4 = st.columns(4)
+        with col_d1:
+            st.markdown(f"📍 **{rec['category']}**")
+        with col_d2:
+            st.markdown("📅 **7 Days**")
+        with col_d3:
+            st.markdown(f"💰 **${rec['average_cost']:,}**")
+        with col_d4:
+            st.markdown(f"⭐ **{rec['best_season']}**")
+        
+        # Description
+        st.write(rec['description'])
+        
+        # Metrics
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        with col_m1:
             st.metric("Budget Fit", f"{rec.get('budget_score', 7):.1f}/10")
-        with col2:
+        with col_m2:
             st.metric("DNA Match", f"{rec.get('dna_match', 7):.1f}/10")
-        with col3:
+        with col_m3:
             st.metric("Weather", f"{rec.get('weather_score', 7):.1f}/10")
-        with col4:
+        with col_m4:
             st.metric("Crowds", f"{rec.get('crowd_score', 7):.1f}/10")
         
-        # Expanders with plain text (not HTML)
-        col_a, col_b, col_c = st.columns([1, 1, 1])
+        # Expanders with plain text (NOT HTML)
+        col_e1, col_e2, col_e3 = st.columns(3)
         
-        with col_a:
+        with col_e1:
             with st.expander("🔍 Why this trip?"):
                 if 'why' in rec:
                     st.write(rec['why'])
                 else:
                     category = rec.get('category', '').lower()
-                    why_texts = {
-                        "adventure": "Perfect for thrill-seekers with exciting activities and breathtaking landscapes.",
-                        "cultural": "Rich in history and culture with authentic local experiences.",
-                        "luxury": "Premium accommodations and exclusive experiences await you.",
-                        "nature": "Connect with nature in this stunning natural paradise.",
-                        "urban": "Experience the vibrant city life and modern attractions.",
-                        "beach": "Relax on beautiful beaches and enjoy the coastal lifestyle.",
-                        "wellness": "Rejuvenate your mind and body in this peaceful setting."
-                    }
-                    st.write(why_texts.get(category, "This destination aligns perfectly with your preferences."))
+                    if "adventure" in category:
+                        st.write("Perfect for thrill-seekers with exciting activities and breathtaking landscapes.")
+                    elif "cultural" in category:
+                        st.write("Rich in history and culture with authentic local experiences.")
+                    elif "luxury" in category:
+                        st.write("Premium accommodations and exclusive experiences await you.")
+                    elif "nature" in category:
+                        st.write("Connect with nature in this stunning natural paradise.")
+                    elif "urban" in category:
+                        st.write("Experience the vibrant city life and modern attractions.")
+                    elif "beach" in category:
+                        st.write("Relax on beautiful beaches and enjoy the coastal lifestyle.")
+                    elif "wellness" in category:
+                        st.write("Rejuvenate your mind and body in this peaceful setting.")
+                    else:
+                        st.write("This destination aligns perfectly with your preferences.")
         
-        with col_b:
+        with col_e2:
             with st.expander("⚖️ Regret Preview"):
                 category = rec.get('category', '').lower()
-                regret_texts = {
-                    "adventure": "Physical demands and rustic conditions may challenge you if you prefer luxury.",
-                    "cultural": "Structured activities might feel overwhelming if you seek pure relaxation.",
-                    "luxury": "May feel less authentic if you prefer rugged, budget-friendly experiences.",
-                    "nature": "Remote location might feel isolating if you need constant connectivity.",
-                    "urban": "Constant energy and crowds could be overwhelming if you need peace.",
-                    "beach": "Extended beach time might feel less stimulating for adventure seekers.",
-                    "wellness": "Peaceful pace might be too gentle if you're looking for high-energy activities."
-                }
-                st.write(f"⚠️ {regret_texts.get(category, 'Consider timing and your personal preferences.')}")
+                if "adventure" in category:
+                    st.write("⚠️ Physical demands and rustic conditions may challenge you if you prefer luxury.")
+                elif "cultural" in category:
+                    st.write("⚠️ Structured activities might feel overwhelming if you seek pure relaxation.")
+                elif "luxury" in category:
+                    st.write("⚠️ May feel less authentic if you prefer rugged, budget-friendly experiences.")
+                elif "nature" in category:
+                    st.write("⚠️ Remote location might feel isolating if you need constant connectivity.")
+                elif "urban" in category:
+                    st.write("⚠️ Constant energy and crowds could be overwhelming if you need peace.")
+                elif "beach" in category:
+                    st.write("⚠️ Extended beach time might feel less stimulating for adventure seekers.")
+                elif "wellness" in category:
+                    st.write("⚠️ Peaceful pace might be too gentle if you're looking for high-energy activities.")
+                else:
+                    st.write("⚠️ Consider timing and your personal preferences.")
         
-        with col_c:
+        with col_e3:
             if st.button(f"✅ Book with Confidence", key=f"book_{i}", use_container_width=True):
                 st.balloons()
                 st.success(f"✨ Booking initiated for {rec['name']}! Check your email for details.")
         
-        st.markdown("---")
+        st.divider()
 
 def render_destination_explorer():
     """Render destination explorer"""
@@ -658,29 +663,28 @@ def render_destination_explorer():
     
     # Display in grid
     if filtered:
-        rows = [filtered[i:i+3] for i in range(0, len(filtered), 3)]
-        
-        for row in rows:
+        for i in range(0, len(filtered), 3):
             cols = st.columns(3)
-            for idx, dest in enumerate(row):
-                with cols[idx]:
-                    st.markdown(f"""
-                    <div style="
-                        background: rgba(255, 255, 255, 0.05);
-                        border: 1px solid #00d4ff;
-                        border-radius: 15px;
-                        padding: 20px;
-                        height: 280px;
-                        margin-bottom: 20px;
-                        transition: all 0.3s ease;
-                    ">
-                        <h4 style="color: #00d4ff; margin-bottom: 5px;">{dest['name']}</h4>
-                        <p style="color: #cccccc; font-size: 0.9rem; margin-bottom: 10px;">{dest['country']}</p>
-                        <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">{dest['category']} • ${dest['average_cost']}</p>
-                        <p style="color: #ffffff; font-size: 0.9rem; margin-bottom: 10px;">Best: {dest['best_season']}</p>
-                        <p style="color: #cccccc; font-size: 0.85rem;">{dest['description'][:100]}...</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+            for j in range(3):
+                if i + j < len(filtered):
+                    dest = filtered[i + j]
+                    with cols[j]:
+                        st.markdown(f"""
+                        <div style="
+                            background: rgba(255, 255, 255, 0.05);
+                            border: 1px solid #00d4ff;
+                            border-radius: 15px;
+                            padding: 20px;
+                            height: 280px;
+                            margin-bottom: 20px;
+                        ">
+                            <h4 style="color: #00d4ff; margin-bottom: 5px;">{dest['name']}</h4>
+                            <p style="color: #cccccc; font-size: 0.9rem; margin-bottom: 10px;">{dest['country']}</p>
+                            <p style="color: #00d4ff; font-size: 0.9rem; margin-bottom: 10px;">{dest['category']} • ${dest['average_cost']}</p>
+                            <p style="color: #ffffff; font-size: 0.9rem; margin-bottom: 10px;">Best: {dest['best_season']}</p>
+                            <p style="color: #cccccc; font-size: 0.85rem;">{dest['description'][:100]}...</p>
+                        </div>
+                        """, unsafe_allow_html=True)
     else:
         st.info("No destinations match your filters")
 
@@ -696,12 +700,6 @@ def main():
     render_hero()
     
     tab_names = ["🧬 DNA Quiz", "🧭 Trip Planner", "🎯 Recommendations", "🌍 Explorer"]
-    
-    if st.session_state.user_profile:
-        default_tab = st.session_state.active_tab
-    else:
-        default_tab = 0
-    
     tabs = st.tabs(tab_names)
     
     with tabs[0]:
@@ -721,8 +719,8 @@ def main():
     
     # Footer
     st.markdown("""
-    <div class="footer">
-        <p>Made with ❤️ by <a href="#">VoyageAI</a></p>
+    <div style="text-align: center; padding: 30px 20px; color: #ffffff; border-top: 1px solid #00d4ff; margin-top: 50px;">
+        <p>Made with ❤️ by <a href="#" style="color: #00d4ff; text-decoration: none;">VoyageAI</a></p>
         <p style="color: #888; font-size: 0.8rem;">Confidence-first travel discovery platform</p>
     </div>
     """, unsafe_allow_html=True)
