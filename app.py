@@ -452,7 +452,7 @@ def render_dna_results():
             st.rerun()
 
 def render_trip_planner():
-    """Render trip planner"""
+    """Render trip planner - FIXED VERSION"""
     st.markdown("<h2>🧭 Plan Your Trip</h2>", unsafe_allow_html=True)
     
     with st.form("planner_form"):
@@ -496,22 +496,31 @@ def render_trip_planner():
         
         if submitted:
             with st.spinner("Analyzing destinations..."):
+                # FIXED: Make sure travel_dna is passed correctly
+                user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
+                
                 prefs = {
                     "travel_style": travel_style,
                     "budget_min": budget_min,
                     "budget_max": budget_max,
-                    "travel_dates": (start_date, end_date),
+                    "travel_dates": (start_date.isoformat(), end_date.isoformat()),
                     "interests": interests,
                     "weather_priority": weather_priority,
                     "crowd_tolerance": crowd_tolerance,
-                    "travel_dna": st.session_state.user_profile
+                    "travel_dna": user_profile  # Pass the full profile
                 }
                 
                 destinations = data_store.get_all_destinations()
                 recs = confidence_engine.calculate_recommendations(destinations, prefs)
-                st.session_state.recommendations = recs
-                st.session_state.active_tab = 2
-                st.rerun()
+                
+                # FIXED: Add debug info
+                if recs and len(recs) > 0:
+                    st.session_state.recommendations = recs
+                    st.session_state.active_tab = 2
+                    st.success(f"Found {len(recs)} matching destinations!")
+                    st.rerun()
+                else:
+                    st.error("No destinations match your criteria. Try adjusting your filters.")
 
 def render_recommendations():
     """Render recommendations - FIXED VERSION"""
