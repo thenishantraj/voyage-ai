@@ -446,6 +446,7 @@ def render_trip_planner():
     if not st.session_state.user_profile:
         st.warning("⚠️ Complete the DNA Quiz first for better recommendations!")
     
+    # Create form
     with st.form("planner_form"):
         st.markdown("""
         <div style="
@@ -481,37 +482,43 @@ def render_trip_planner():
             crowd_tolerance = st.slider("Crowd Tolerance", 1, 10, 5)
             
             st.markdown("<br>", unsafe_allow_html=True)
+            # Submit button - YAHI SE FORM KHATAM HOGA
             submitted = st.form_submit_button("🎯 Find Confident Matches", type="primary", use_container_width=True)
         
         st.markdown("</div>", unsafe_allow_html=True)
-        
-        if submitted:
-            with st.spinner("Analyzing destinations..."):
-                # Get user profile (may be None)
-                user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
-                
-                prefs = {
-                    "travel_style": travel_style,
-                    "budget_min": budget_min,
-                    "budget_max": budget_max,
-                    "travel_dates": (start_date.isoformat(), end_date.isoformat()),
-                    "interests": interests,
-                    "weather_priority": weather_priority,
-                    "crowd_tolerance": crowd_tolerance,
-                    "travel_dna": user_profile
-                }
-                
-                destinations = data_store.get_all_destinations()
-                recs = confidence_engine.calculate_recommendations(destinations, prefs)
-                
-                if recs and len(recs) > 0:
-                    st.session_state.recommendations = recs
-                    st.success(f"✅ Found {len(recs)} matching destinations! Click on Recommendations tab to view them.")
-                    # Automatically switch to recommendations tab
-                    st.session_state.active_tab = 2
-                    st.rerun()
-                else:
-                    st.error("❌ No destinations match your criteria. Try adjusting your filters.")
+    
+    # Handle form submission - YAHAN PAR FORM KE BAHAR CHECK KAREIN
+    if submitted:
+        with st.spinner("🔍 Analyzing destinations and calculating confidence scores..."):
+            # Get user profile (may be None)
+            user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
+            
+            prefs = {
+                "travel_style": travel_style,
+                "budget_min": budget_min,
+                "budget_max": budget_max,
+                "travel_dates": (start_date.isoformat(), end_date.isoformat()),
+                "interests": interests,
+                "weather_priority": weather_priority,
+                "crowd_tolerance": crowd_tolerance,
+                "travel_dna": user_profile
+            }
+            
+            # Get all destinations
+            destinations = data_store.get_all_destinations()
+            
+            # Calculate recommendations
+            recs = confidence_engine.calculate_recommendations(destinations, prefs)
+            
+            # Store in session state
+            if recs and len(recs) > 0:
+                st.session_state.recommendations = recs
+                st.success(f"✅ Found {len(recs)} matching destinations! Check the Recommendations tab.")
+                # Switch to recommendations tab
+                st.session_state.active_tab = 2
+                st.rerun()
+            else:
+                st.error("❌ No destinations match your criteria. Try adjusting your filters.")
 
 def render_recommendations():
     """Render recommendations - FIXED VERSION with proper cards"""
