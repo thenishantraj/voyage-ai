@@ -46,7 +46,6 @@ def load_css():
                 css_content = f.read()
                 st.markdown(f"<style>{css_content}</style>", unsafe_allow_html=True)
         else:
-            # Fallback message
             st.warning("CSS file not found. Using default styling.")
     except Exception as e:
         st.error(f"CSS loading error: {e}")
@@ -322,8 +321,6 @@ def render_dna_quiz():
                     key=f"slider_{q['id']}",
                     label_visibility="collapsed"
                 )
-            with col1:
-                st.markdown(f"<p style='color: #cccccc;'>{labels[1]}</p>", unsafe_allow_html=True)
             
             st.session_state.quiz_responses[q['id']] = response
         
@@ -346,6 +343,7 @@ def render_dna_quiz():
                 if st.button("✨ See My DNA", type="primary", use_container_width=True):
                     profile = dna_profiler.analyze_responses(st.session_state.quiz_responses)
                     st.session_state.user_profile = profile
+                    st.success(f"Your travel personality: {profile['personality_type']}")
                     st.rerun()
         
         # Progress
@@ -496,7 +494,7 @@ def render_trip_planner():
         
         if submitted:
             with st.spinner("Analyzing destinations..."):
-                # FIXED: Make sure travel_dna is passed correctly
+                # Get user profile
                 user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
                 
                 prefs = {
@@ -507,13 +505,12 @@ def render_trip_planner():
                     "interests": interests,
                     "weather_priority": weather_priority,
                     "crowd_tolerance": crowd_tolerance,
-                    "travel_dna": user_profile  # Pass the full profile
+                    "travel_dna": user_profile
                 }
                 
                 destinations = data_store.get_all_destinations()
                 recs = confidence_engine.calculate_recommendations(destinations, prefs)
                 
-                # FIXED: Add debug info
                 if recs and len(recs) > 0:
                     st.session_state.recommendations = recs
                     st.session_state.active_tab = 2
@@ -523,7 +520,7 @@ def render_trip_planner():
                     st.error("No destinations match your criteria. Try adjusting your filters.")
 
 def render_recommendations():
-    """Render recommendations - FIXED VERSION"""
+    """Render recommendations - FIXED VERSION with proper text formatting"""
     if not st.session_state.recommendations:
         st.info("👆 Go to Trip Planner to get your personalized recommendations")
         return
@@ -546,7 +543,7 @@ def render_recommendations():
             color = "#ffaa00"
             badge = "Good Match"
         
-        # FIXED: Use st.markdown with proper formatting, not just HTML
+        # Trip card with proper formatting
         st.markdown(f"""
         <div class="trip-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
@@ -568,23 +565,22 @@ def render_recommendations():
         </div>
         """, unsafe_allow_html=True)
         
-        # FIXED: Use st.columns for metrics instead of HTML
+        # Metrics in columns
         col1, col2, col3, col4 = st.columns(4)
-        
         with col1:
-            st.metric("Budget Fit", f"{rec.get('budget_score', 0):.1f}/10")
+            st.metric("Budget Fit", f"{rec.get('budget_score', 7):.1f}/10")
         with col2:
-            st.metric("DNA Match", f"{rec.get('dna_match', 0):.1f}/10")
+            st.metric("DNA Match", f"{rec.get('dna_match', 7):.1f}/10")
         with col3:
-            st.metric("Weather", f"{rec.get('weather_score', 0):.1f}/10")
+            st.metric("Weather", f"{rec.get('weather_score', 7):.1f}/10")
         with col4:
-            st.metric("Crowds", f"{rec.get('crowd_score', 0):.1f}/10")
+            st.metric("Crowds", f"{rec.get('crowd_score', 7):.1f}/10")
         
+        # Expanders with plain text (not HTML)
         col_a, col_b, col_c = st.columns([1, 1, 1])
         
         with col_a:
             with st.expander("🔍 Why this trip?"):
-                # FIXED: Use plain text, not HTML
                 if 'why' in rec:
                     st.write(rec['why'])
                 else:
@@ -602,7 +598,6 @@ def render_recommendations():
         
         with col_b:
             with st.expander("⚖️ Regret Preview"):
-                # FIXED: Use plain text, not HTML
                 category = rec.get('category', '').lower()
                 regret_texts = {
                     "adventure": "Physical demands and rustic conditions may challenge you if you prefer luxury.",
