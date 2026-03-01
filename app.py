@@ -446,6 +446,9 @@ def render_trip_planner():
     if not st.session_state.user_profile:
         st.warning("⚠️ Complete the DNA Quiz first for better recommendations!")
     
+    # Initialize form variables
+    submitted = False
+    
     # Create the form
     with st.form("planner_form"):
         st.markdown("""
@@ -462,24 +465,26 @@ def render_trip_planner():
         with col1:
             travel_style = st.selectbox(
                 "Travel Style",
-                ["Solo", "Couple", "Family", "Friends", "Business"]
+                ["Solo", "Couple", "Family", "Friends", "Business"],
+                key="travel_style_input"
             )
             
-            budget_min = st.number_input("Minimum Budget ($)", min_value=500, max_value=10000, value=1500, step=500)
-            budget_max = st.number_input("Maximum Budget ($)", min_value=500, max_value=10000, value=4000, step=500)
+            budget_min = st.number_input("Minimum Budget ($)", min_value=500, max_value=10000, value=1500, step=500, key="budget_min_input")
+            budget_max = st.number_input("Maximum Budget ($)", min_value=500, max_value=10000, value=4000, step=500, key="budget_max_input")
             
-            start_date = st.date_input("Start Date", datetime.now())
-            end_date = st.date_input("End Date", datetime.now() + timedelta(days=7))
+            start_date = st.date_input("Start Date", datetime.now(), key="start_date_input")
+            end_date = st.date_input("End Date", datetime.now() + timedelta(days=7), key="end_date_input")
         
         with col2:
             interests = st.multiselect(
                 "Interests",
                 ["Adventure", "Culture", "Luxury", "Nature", "Urban", "Beach", "Wellness", "Food"],
-                default=["Adventure", "Culture"]
+                default=["Adventure", "Culture"],
+                key="interests_input"
             )
             
-            weather_priority = st.slider("Weather Importance", 1, 10, 7)
-            crowd_tolerance = st.slider("Crowd Tolerance", 1, 10, 5)
+            weather_priority = st.slider("Weather Importance", 1, 10, 7, key="weather_input")
+            crowd_tolerance = st.slider("Crowd Tolerance", 1, 10, 5, key="crowd_input")
             
             st.markdown("<br>", unsafe_allow_html=True)
             submitted = st.form_submit_button("🎯 Find Confident Matches", type="primary", use_container_width=True)
@@ -520,19 +525,11 @@ def render_trip_planner():
                 st.error("❌ No destinations match your criteria. Try adjusting your filters.")
 
 def render_recommendations():
-    """Render recommendations - FIXED VERSION"""
+    """Render recommendations - FIXED VERSION (no self references)"""
     st.markdown("<h2>🎯 Your Confidence-Backed Matches</h2>", unsafe_allow_html=True)
     
     if not st.session_state.recommendations:
         st.info("👆 Go to Trip Planner and click 'Find Confident Matches' to see your personalized recommendations")
-        
-        # Show sample for debugging (remove this after fixing)
-        with st.expander("Debug Info (will be removed)"):
-            st.write("Session State Keys:", list(st.session_state.keys()))
-            if 'recommendations' in st.session_state:
-                st.write("Recommendations exist but not showing")
-            else:
-                st.write("No recommendations in session state")
         return
     
     recs = st.session_state.recommendations
@@ -581,14 +578,15 @@ def render_recommendations():
             with col_m4:
                 st.metric("Crowd Level", f"{rec.get('crowd_score', 7):.1f}/10")
             
-            # Expanders
+            # Expanders - FIXED: No 'self' references
             col_e1, col_e2 = st.columns(2)
             with col_e1:
                 with st.expander("🔍 Why this trip?"):
-                    st.write(self._get_why_text(rec['category']))
+                    # Direct function calls without 'self'
+                    st.write(_get_why_text(rec['category']))
             with col_e2:
                 with st.expander("⚖️ Regret Preview"):
-                    st.write(self._get_regret_text(rec['category']))
+                    st.write(_get_regret_text(rec['category']))
             
             # Book button
             if st.button(f"✅ Book {rec['name']}", key=f"book_{i}"):
@@ -596,6 +594,33 @@ def render_recommendations():
                 st.success(f"Booking initiated for {rec['name']}!")
             
             st.divider()
+
+# Add these helper functions OUTSIDE any class, at the module level
+def _get_why_text(category):
+    """Helper for why text"""
+    texts = {
+        "Adventure": "Perfect for thrill-seekers! You'll find exciting activities, breathtaking landscapes, and authentic experiences that match your adventurous spirit.",
+        "Cultural": "Rich in history and culture! You'll immerse yourself in local traditions, explore ancient sites, and gain deep cultural understanding.",
+        "Luxury": "Indulge in premium experiences! From 5-star accommodations to exclusive services, every detail is crafted for your comfort and enjoyment.",
+        "Nature": "Connect with nature! You'll find peace in stunning landscapes, encounter wildlife, and rejuvenate in pristine environments.",
+        "Urban": "Experience vibrant city life! World-class dining, entertainment, and endless exploration opportunities await you.",
+        "Beach": "Relax and unwind! Beautiful beaches, crystal-clear waters, and laid-back vibes create the perfect escape.",
+        "Wellness": "Rejuvenate mind and body! Spa treatments, yoga retreats, and peaceful surroundings help you find balance and inner peace."
+    }
+    return texts.get(category, "This destination aligns perfectly with your preferences and travel style.")
+
+def _get_regret_text(category):
+    """Helper for regret text"""
+    texts = {
+        "Adventure": "⚠️ If you prefer predictable plans and luxury accommodations, the physical demands and rustic conditions might challenge you.",
+        "Cultural": "⚠️ If you primarily seek relaxation or nightlife, the focus on structured cultural activities might feel overwhelming.",
+        "Luxury": "⚠️ If you're seeking authentic, rugged experiences, the premium environment might feel less genuine and more curated.",
+        "Nature": "⚠️ If you crave urban excitement and constant connectivity, the remote location might feel isolating at times.",
+        "Urban": "⚠️ If you need solitude and quiet, the city's constant energy and crowds could be overwhelming.",
+        "Beach": "⚠️ Adventure-seekers or culture enthusiasts might find extended beach time less stimulating after a few days.",
+        "Wellness": "⚠️ Travelers seeking high-energy activities might find the peaceful pace too gentle and relaxing."
+    }
+    return texts.get(category, "⚠️ Consider your personal preferences and timing when making your final decision.")
 
 def _get_why_text(self, category):
     """Helper for why text"""
