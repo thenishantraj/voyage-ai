@@ -5,7 +5,6 @@ Calculates weighted geometric mean for destination recommendations
 
 import numpy as np
 from typing import Dict, List, Any
-from datetime import datetime
 
 class ConfidenceEngine:
     """Engine for calculating confidence scores"""
@@ -54,7 +53,7 @@ class ConfidenceEngine:
         return recommendations
     
     def _calculate_component_scores(self, dest: Dict, prefs: Dict) -> Dict[str, float]:
-        """Calculate individual component scores (0-10 scale) - FIXED VERSION"""
+        """Calculate individual component scores (0-10 scale)"""
         scores = {}
         
         # Budget Score (0-10)
@@ -67,7 +66,7 @@ class ConfidenceEngine:
         elif dest_cost <= budget_max:
             if budget_max > budget_min:
                 ratio = (dest_cost - budget_min) / (budget_max - budget_min)
-                scores["budget_score"] = 10.0 - (ratio * 4.0)  # 10 to 6
+                scores["budget_score"] = 10.0 - (ratio * 4.0)
             else:
                 scores["budget_score"] = 8.0
         else:
@@ -87,31 +86,29 @@ class ConfidenceEngine:
         dest_crowd = dest.get("crowd_score", 5.0)
         user_tolerance = prefs.get("crowd_tolerance", 5) / 10.0
         
-        if user_tolerance <= 0.4:  # Prefers quiet
+        if user_tolerance <= 0.4:
             ideal = 10.0 - dest_crowd
             scores["crowd_score"] = ideal * 1.2
-        elif user_tolerance >= 0.7:  # Likes crowds
+        elif user_tolerance >= 0.7:
             scores["crowd_score"] = dest_crowd * 1.2
-        else:  # Balanced
+        else:
             ideal = 10.0 - abs(dest_crowd - 5.0)
             scores["crowd_score"] = ideal
         
         scores["crowd_score"] = min(10, max(1, scores["crowd_score"]))
         
-        # DNA Match Score - FIXED with better error handling
+        # DNA Match Score
         scores["dna_match"] = 7.0  # Default
         
         user_dna = prefs.get("travel_dna")
         
         if user_dna and isinstance(user_dna, dict):
-            # Try to get dimensions from the profile
+            # Get dimensions from profile
             dna_dims = user_dna.get("dimensions", {})
             
-            # If no dimensions but the profile itself has dimension keys
-            if not dna_dims:
-                # Check if this is already a dimensions dict
-                if any(key in user_dna for key in ["adventure", "comfort", "culture"]):
-                    dna_dims = user_dna
+            # If no dimensions but has direct keys
+            if not dna_dims and any(k in user_dna for k in ["adventure", "comfort"]):
+                dna_dims = user_dna
             
             dest_dna = dest.get("dna_affinity", {})
             
