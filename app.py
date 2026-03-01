@@ -446,10 +446,6 @@ def render_trip_planner():
     if not st.session_state.user_profile:
         st.warning("⚠️ Complete the DNA Quiz first for better recommendations!")
     
-    # Initialize form variables
-    submitted = False
-    
-    # Create the form
     with st.form("planner_form"):
         st.markdown("""
         <div style="
@@ -465,75 +461,67 @@ def render_trip_planner():
         with col1:
             travel_style = st.selectbox(
                 "Travel Style",
-                ["Solo", "Couple", "Family", "Friends", "Business"],
-                key="travel_style_input"
+                ["Solo", "Couple", "Family", "Friends", "Business"]
             )
             
-            budget_min = st.number_input("Minimum Budget ($)", min_value=500, max_value=10000, value=1500, step=500, key="budget_min_input")
-            budget_max = st.number_input("Maximum Budget ($)", min_value=500, max_value=10000, value=4000, step=500, key="budget_max_input")
+            budget_min = st.number_input("Minimum Budget ($)", min_value=500, max_value=10000, value=1500, step=500)
+            budget_max = st.number_input("Maximum Budget ($)", min_value=500, max_value=10000, value=4000, step=500)
             
-            start_date = st.date_input("Start Date", datetime.now(), key="start_date_input")
-            end_date = st.date_input("End Date", datetime.now() + timedelta(days=7), key="end_date_input")
+            start_date = st.date_input("Start Date", datetime.now())
+            end_date = st.date_input("End Date", datetime.now() + timedelta(days=7))
         
         with col2:
             interests = st.multiselect(
                 "Interests",
                 ["Adventure", "Culture", "Luxury", "Nature", "Urban", "Beach", "Wellness", "Food"],
-                default=["Adventure", "Culture"],
-                key="interests_input"
+                default=["Adventure", "Culture"]
             )
             
-            weather_priority = st.slider("Weather Importance", 1, 10, 7, key="weather_input")
-            crowd_tolerance = st.slider("Crowd Tolerance", 1, 10, 5, key="crowd_input")
+            weather_priority = st.slider("Weather Importance", 1, 10, 7)
+            crowd_tolerance = st.slider("Crowd Tolerance", 1, 10, 5)
             
             st.markdown("<br>", unsafe_allow_html=True)
             submitted = st.form_submit_button("🎯 Find Confident Matches", type="primary", use_container_width=True)
         
         st.markdown("</div>", unsafe_allow_html=True)
-    
-    # Handle form submission OUTSIDE the form
-    if submitted:
-        with st.spinner("🔍 Analyzing destinations and calculating confidence scores..."):
-            # Get user profile (may be None)
-            user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
-            
-            prefs = {
-                "travel_style": travel_style,
-                "budget_min": budget_min,
-                "budget_max": budget_max,
-                "travel_dates": (start_date.isoformat(), end_date.isoformat()),
-                "interests": interests,
-                "weather_priority": weather_priority,
-                "crowd_tolerance": crowd_tolerance,
-                "travel_dna": user_profile
-            }
-            
-            # Get all destinations
-            destinations = data_store.get_all_destinations()
-            
-            # Calculate recommendations
-            recs = confidence_engine.calculate_recommendations(destinations, prefs)
-            
-            # Store in session state
-            if recs and len(recs) > 0:
-                st.session_state.recommendations = recs
-                st.success(f"✅ Found {len(recs)} matching destinations! Check the Recommendations tab.")
-                # Switch to recommendations tab
-                st.session_state.active_tab = 2
-                st.rerun()
-            else:
-                st.error("❌ No destinations match your criteria. Try adjusting your filters.")
+        
+        if submitted:
+            with st.spinner("Analyzing destinations..."):
+                # Get user profile (may be None)
+                user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
+                
+                prefs = {
+                    "travel_style": travel_style,
+                    "budget_min": budget_min,
+                    "budget_max": budget_max,
+                    "travel_dates": (start_date.isoformat(), end_date.isoformat()),
+                    "interests": interests,
+                    "weather_priority": weather_priority,
+                    "crowd_tolerance": crowd_tolerance,
+                    "travel_dna": user_profile
+                }
+                
+                destinations = data_store.get_all_destinations()
+                recs = confidence_engine.calculate_recommendations(destinations, prefs)
+                
+                if recs and len(recs) > 0:
+                    st.session_state.recommendations = recs
+                    st.success(f"✅ Found {len(recs)} matching destinations! Click on Recommendations tab to view them.")
+                    # Automatically switch to recommendations tab
+                    st.session_state.active_tab = 2
+                    st.rerun()
+                else:
+                    st.error("❌ No destinations match your criteria. Try adjusting your filters.")
 
 def render_recommendations():
-    """Render recommendations - FIXED VERSION (no self references)"""
+    """Render recommendations - FIXED VERSION with proper cards"""
     st.markdown("<h2>🎯 Your Confidence-Backed Matches</h2>", unsafe_allow_html=True)
     
     if not st.session_state.recommendations:
-        st.info("👆 Go to Trip Planner and click 'Find Confident Matches' to see your personalized recommendations")
+        st.info("👆 Go to Trip Planner to get your personalized recommendations")
         return
     
     recs = st.session_state.recommendations
-    st.success(f"Showing {len(recs)} destinations matched to your preferences")
     
     for i, rec in enumerate(recs[:6]):  # Show top 6
         conf = rec['confidence_score']
@@ -542,111 +530,122 @@ def render_recommendations():
         if conf >= 85:
             color = "#00ff00"
             badge = "🌟 Excellent Match"
+            badge_color = "#00ff00"
         elif conf >= 70:
             color = "#00d4ff"
             badge = "✨ Great Match"
+            badge_color = "#00d4ff"
         else:
             color = "#ffaa00"
             badge = "👍 Good Match"
+            badge_color = "#ffaa00"
         
-        # Create a card for each recommendation
+        # Create a beautiful card for each recommendation
         with st.container():
-            # Header with title and confidence
-            col1, col2 = st.columns([3, 1])
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(26, 26, 46, 0.95) 100%);
+                border: 2px solid #00d4ff;
+                border-radius: 20px;
+                padding: 25px;
+                margin: 20px 0;
+                box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
+            ">
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Header with title and confidence score
+            col1, col2, col3 = st.columns([3, 1, 1])
             with col1:
                 st.markdown(f"### 📍 {rec['name']}, {rec['country']}")
-                st.caption(f"{rec['category']} • Best in {rec['best_season']}")
+                st.markdown(f"<span style='color: #00d4ff; font-size: 0.9rem;'>{rec['category']} • Best in {rec['best_season']}</span>", unsafe_allow_html=True)
             with col2:
-                st.markdown(f"<h1 style='color: {color}; text-align: right;'>{conf:.0f}%</h1>", unsafe_allow_html=True)
-                st.markdown(f"<p style='color: {color}; text-align: right;'>{badge}</p>", unsafe_allow_html=True)
+                st.markdown(f"<h1 style='color: {color}; text-align: right; margin-bottom: 0;'>{conf:.0f}%</h1>", unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"<div style='background: {badge_color}20; border: 1px solid {badge_color}; border-radius: 20px; padding: 5px 10px; text-align: center;'><span style='color: {badge_color}; font-weight: 600;'>{badge}</span></div>", unsafe_allow_html=True)
+            
+            st.markdown("<br>", unsafe_allow_html=True)
             
             # Description
-            st.markdown(f"*{rec['description']}*")
+            st.markdown(f"""
+            <div style="
+                background: rgba(0, 0, 0, 0.3);
+                border-left: 3px solid #00d4ff;
+                padding: 15px;
+                border-radius: 10px;
+                margin: 15px 0;
+            ">
+                <p style="color: #ffffff; font-style: italic; margin: 0;">"{rec['description']}"</p>
+            </div>
+            """, unsafe_allow_html=True)
             
             # Highlights
-            if rec.get('highlights'):
-                st.markdown("**✨ Highlights:** " + " • ".join(rec['highlights'][:4]))
+            highlights = rec.get('highlights', [])
+            if highlights:
+                st.markdown("**✨ Highlights:** " + " • ".join(highlights[:4]))
             
-            # Metrics in columns
+            # Metrics in a grid
             col_m1, col_m2, col_m3, col_m4 = st.columns(4)
             with col_m1:
-                st.metric("Budget Fit", f"{rec.get('budget_score', 7):.1f}/10")
+                st.metric("Budget Fit", f"{rec.get('budget_score', 7):.1f}/10", delta=None, delta_color="off")
             with col_m2:
-                st.metric("DNA Match", f"{rec.get('dna_match', 7):.1f}/10")
+                st.metric("DNA Match", f"{rec.get('dna_match', 7):.1f}/10", delta=None, delta_color="off")
             with col_m3:
-                st.metric("Weather", f"{rec.get('weather_score', 7):.1f}/10")
+                st.metric("Weather", f"{rec.get('weather_score', 7):.1f}/10", delta=None, delta_color="off")
             with col_m4:
-                st.metric("Crowd Level", f"{rec.get('crowd_score', 7):.1f}/10")
+                st.metric("Crowd Level", f"{rec.get('crowd_score', 7):.1f}/10", delta=None, delta_color="off")
             
-            # Expanders - FIXED: No 'self' references
-            col_e1, col_e2 = st.columns(2)
+            # Expanders for more info
+            col_e1, col_e2, col_e3 = st.columns(3)
+            
             with col_e1:
                 with st.expander("🔍 Why this trip?"):
-                    # Direct function calls without 'self'
-                    st.write(_get_why_text(rec['category']))
+                    category = rec.get('category', '').lower()
+                    if "adventure" in category:
+                        st.write("Perfect for thrill-seekers! You'll find exciting activities, breathtaking landscapes, and authentic experiences that match your adventurous spirit.")
+                    elif "cultural" in category:
+                        st.write("Rich in history and culture! You'll immerse yourself in local traditions, explore ancient sites, and gain deep cultural understanding.")
+                    elif "luxury" in category:
+                        st.write("Indulge in premium experiences! From 5-star accommodations to exclusive services, every detail is crafted for your comfort and enjoyment.")
+                    elif "nature" in category:
+                        st.write("Connect with nature! You'll find peace in stunning landscapes, encounter wildlife, and rejuvenate in pristine environments.")
+                    elif "urban" in category:
+                        st.write("Experience vibrant city life! World-class dining, entertainment, and endless exploration opportunities await you.")
+                    elif "beach" in category:
+                        st.write("Relax and unwind! Beautiful beaches, crystal-clear waters, and laid-back vibes create the perfect escape.")
+                    elif "wellness" in category:
+                        st.write("Rejuvenate mind and body! Spa treatments, yoga retreats, and peaceful surroundings help you find balance and inner peace.")
+                    else:
+                        st.write("This destination aligns perfectly with your preferences and travel style.")
+            
             with col_e2:
                 with st.expander("⚖️ Regret Preview"):
-                    st.write(_get_regret_text(rec['category']))
+                    category = rec.get('category', '').lower()
+                    if "adventure" in category:
+                        st.write("⚠️ If you prefer predictable plans and luxury accommodations, the physical demands and rustic conditions might challenge you.")
+                    elif "cultural" in category:
+                        st.write("⚠️ If you primarily seek relaxation or nightlife, the focus on structured cultural activities might feel overwhelming.")
+                    elif "luxury" in category:
+                        st.write("⚠️ If you're seeking authentic, rugged experiences, the premium environment might feel less genuine and more curated.")
+                    elif "nature" in category:
+                        st.write("⚠️ If you crave urban excitement and constant connectivity, the remote location might feel isolating at times.")
+                    elif "urban" in category:
+                        st.write("⚠️ If you need solitude and quiet, the city's constant energy and crowds could be overwhelming.")
+                    elif "beach" in category:
+                        st.write("⚠️ Adventure-seekers or culture enthusiasts might find extended beach time less stimulating after a few days.")
+                    elif "wellness" in category:
+                        st.write("⚠️ Travelers seeking high-energy activities might find the peaceful pace too gentle and relaxing.")
+                    else:
+                        st.write("⚠️ Consider your personal preferences and timing when making your final decision.")
             
-            # Book button
-            if st.button(f"✅ Book {rec['name']}", key=f"book_{i}"):
-                st.balloons()
-                st.success(f"Booking initiated for {rec['name']}!")
+            with col_e3:
+                st.markdown(f"**💰 Estimated Cost:** ${rec['average_cost']:,}")
+                st.markdown(f"**📅 Duration:** 7 Days")
+                if st.button(f"✅ Book with Confidence", key=f"book_{i}", use_container_width=True):
+                    st.balloons()
+                    st.success(f"✨ Great choice! Your booking for {rec['name']} has been initiated. Check your email for confirmation details.")
             
             st.divider()
-
-# Add these helper functions OUTSIDE any class, at the module level
-def _get_why_text(category):
-    """Helper for why text"""
-    texts = {
-        "Adventure": "Perfect for thrill-seekers! You'll find exciting activities, breathtaking landscapes, and authentic experiences that match your adventurous spirit.",
-        "Cultural": "Rich in history and culture! You'll immerse yourself in local traditions, explore ancient sites, and gain deep cultural understanding.",
-        "Luxury": "Indulge in premium experiences! From 5-star accommodations to exclusive services, every detail is crafted for your comfort and enjoyment.",
-        "Nature": "Connect with nature! You'll find peace in stunning landscapes, encounter wildlife, and rejuvenate in pristine environments.",
-        "Urban": "Experience vibrant city life! World-class dining, entertainment, and endless exploration opportunities await you.",
-        "Beach": "Relax and unwind! Beautiful beaches, crystal-clear waters, and laid-back vibes create the perfect escape.",
-        "Wellness": "Rejuvenate mind and body! Spa treatments, yoga retreats, and peaceful surroundings help you find balance and inner peace."
-    }
-    return texts.get(category, "This destination aligns perfectly with your preferences and travel style.")
-
-def _get_regret_text(category):
-    """Helper for regret text"""
-    texts = {
-        "Adventure": "⚠️ If you prefer predictable plans and luxury accommodations, the physical demands and rustic conditions might challenge you.",
-        "Cultural": "⚠️ If you primarily seek relaxation or nightlife, the focus on structured cultural activities might feel overwhelming.",
-        "Luxury": "⚠️ If you're seeking authentic, rugged experiences, the premium environment might feel less genuine and more curated.",
-        "Nature": "⚠️ If you crave urban excitement and constant connectivity, the remote location might feel isolating at times.",
-        "Urban": "⚠️ If you need solitude and quiet, the city's constant energy and crowds could be overwhelming.",
-        "Beach": "⚠️ Adventure-seekers or culture enthusiasts might find extended beach time less stimulating after a few days.",
-        "Wellness": "⚠️ Travelers seeking high-energy activities might find the peaceful pace too gentle and relaxing."
-    }
-    return texts.get(category, "⚠️ Consider your personal preferences and timing when making your final decision.")
-
-def _get_why_text(self, category):
-    """Helper for why text"""
-    texts = {
-        "Adventure": "Perfect for thrill-seekers! You'll find exciting activities, breathtaking landscapes, and authentic experiences.",
-        "Cultural": "Rich in history and culture! Immerse yourself in local traditions and explore ancient sites.",
-        "Luxury": "Indulge in premium experiences! From 5-star accommodations to exclusive services.",
-        "Nature": "Connect with nature! Find peace in stunning landscapes and rejuvenate in pristine environments.",
-        "Urban": "Experience vibrant city life! World-class dining, entertainment, and endless exploration.",
-        "Beach": "Relax and unwind! Beautiful beaches and crystal-clear waters create the perfect escape.",
-        "Wellness": "Rejuvenate mind and body! Spa treatments and peaceful surroundings help you find balance."
-    }
-    return texts.get(category, "This destination aligns with your preferences.")
-
-def _get_regret_text(self, category):
-    """Helper for regret text"""
-    texts = {
-        "Adventure": "⚠️ Physical demands and rustic conditions might challenge you if you prefer luxury.",
-        "Cultural": "⚠️ Structured activities might feel overwhelming if you seek pure relaxation.",
-        "Luxury": "⚠️ May feel less authentic if you prefer rugged, budget-friendly experiences.",
-        "Nature": "⚠️ Remote location might feel isolating if you need constant connectivity.",
-        "Urban": "⚠️ Constant energy and crowds could be overwhelming if you need peace.",
-        "Beach": "⚠️ Extended beach time might feel less stimulating for adventure seekers.",
-        "Wellness": "⚠️ Peaceful pace might be too gentle if you're looking for high-energy activities."
-    }
-    return texts.get(category, "⚠️ Consider timing and your personal preferences.")
 
 def render_destination_explorer():
     """Render destination explorer"""
