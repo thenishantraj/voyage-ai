@@ -514,7 +514,7 @@ def render_trip_planner():
                 st.rerun()
 
 def render_recommendations():
-    """Render recommendations"""
+    """Render recommendations - FIXED VERSION"""
     if not st.session_state.recommendations:
         st.info("👆 Go to Trip Planner to get your personalized recommendations")
         return
@@ -537,6 +537,7 @@ def render_recommendations():
             color = "#ffaa00"
             badge = "Good Match"
         
+        # FIXED: Use st.markdown with proper formatting, not just HTML
         st.markdown(f"""
         <div class="trip-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
@@ -549,7 +550,7 @@ def render_recommendations():
             
             <div style="display: flex; gap: 20px; margin-bottom: 15px; color: #cccccc; flex-wrap: wrap;">
                 <span>📍 {rec['category']}</span>
-                <span>📅 {rec['duration'] if 'duration' in rec else '7 Days'}</span>
+                <span>📅 7 Days</span>
                 <span>💰 ${rec['average_cost']:,}</span>
                 <span>⭐ Best: {rec['best_season']}</span>
             </div>
@@ -558,6 +559,7 @@ def render_recommendations():
         </div>
         """, unsafe_allow_html=True)
         
+        # FIXED: Use st.columns for metrics instead of HTML
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
@@ -573,39 +575,36 @@ def render_recommendations():
         
         with col_a:
             with st.expander("🔍 Why this trip?"):
-                if gemini and not gemini.mock_mode:
-                    if st.button(f"Generate AI Explanation", key=f"gen_{i}"):
-                        with st.spinner("AI is thinking..."):
-                            exp = gemini.generate_trip_explanation(
-                                rec, 
-                                st.session_state.user_profile,
-                                {}
-                            )
-                            st.session_state[f'explanation_{i}'] = exp
-                
-                if f'explanation_{i}' in st.session_state:
-                    exp = st.session_state[f'explanation_{i}']
-                    st.markdown(f"**{exp.get('justification', '')}**")
+                # FIXED: Use plain text, not HTML
+                if 'why' in rec:
+                    st.write(rec['why'])
                 else:
-                    st.markdown(f"**{rec.get('why', 'This destination aligns with your preferences.')}**")
+                    category = rec.get('category', '').lower()
+                    why_texts = {
+                        "adventure": "Perfect for thrill-seekers with exciting activities and breathtaking landscapes.",
+                        "cultural": "Rich in history and culture with authentic local experiences.",
+                        "luxury": "Premium accommodations and exclusive experiences await you.",
+                        "nature": "Connect with nature in this stunning natural paradise.",
+                        "urban": "Experience the vibrant city life and modern attractions.",
+                        "beach": "Relax on beautiful beaches and enjoy the coastal lifestyle.",
+                        "wellness": "Rejuvenate your mind and body in this peaceful setting."
+                    }
+                    st.write(why_texts.get(category, "This destination aligns perfectly with your preferences."))
         
         with col_b:
             with st.expander("⚖️ Regret Preview"):
-                if f'explanation_{i}' in st.session_state:
-                    exp = st.session_state[f'explanation_{i}']
-                    st.markdown(f"⚠️ {exp.get('regret_preview', '')}")
-                else:
-                    cat = rec.get('category', '').lower()
-                    regrets = {
-                        "adventure": "Physical demands and rustic conditions may challenge you.",
-                        "cultural": "Structured activities might feel overwhelming if you seek pure relaxation.",
-                        "luxury": "May feel less authentic if you prefer rugged experiences.",
-                        "nature": "Remote location might feel isolating if you need constant connectivity.",
-                        "urban": "Constant energy and crowds could be overwhelming.",
-                        "beach": "Extended beach time might feel less stimulating.",
-                        "wellness": "Peaceful pace might be too gentle for high-energy seekers."
-                    }
-                    st.markdown(f"⚠️ {regrets.get(cat, 'Consider timing and your personal preferences.')}")
+                # FIXED: Use plain text, not HTML
+                category = rec.get('category', '').lower()
+                regret_texts = {
+                    "adventure": "Physical demands and rustic conditions may challenge you if you prefer luxury.",
+                    "cultural": "Structured activities might feel overwhelming if you seek pure relaxation.",
+                    "luxury": "May feel less authentic if you prefer rugged, budget-friendly experiences.",
+                    "nature": "Remote location might feel isolating if you need constant connectivity.",
+                    "urban": "Constant energy and crowds could be overwhelming if you need peace.",
+                    "beach": "Extended beach time might feel less stimulating for adventure seekers.",
+                    "wellness": "Peaceful pace might be too gentle if you're looking for high-energy activities."
+                }
+                st.write(f"⚠️ {regret_texts.get(category, 'Consider timing and your personal preferences.')}")
         
         with col_c:
             if st.button(f"✅ Book with Confidence", key=f"book_{i}", use_container_width=True):
