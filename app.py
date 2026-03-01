@@ -439,13 +439,27 @@ def render_dna_results():
             st.rerun()
 
 def render_trip_planner():
-    """Render trip planner - FIXED VERSION"""
+    """Render trip planner with inline results display"""
     st.markdown("<h2>🧭 Plan Your Trip</h2>", unsafe_allow_html=True)
     
     # Show warning if no DNA profile
     if not st.session_state.user_profile:
         st.warning("⚠️ Complete the DNA Quiz first for better recommendations!")
     
+    # Use session state to persist form values across reruns
+    if 'planner_travel_style' not in st.session_state:
+        st.session_state.planner_travel_style = "Solo"
+    if 'planner_budget_min' not in st.session_state:
+        st.session_state.planner_budget_min = 1500
+    if 'planner_budget_max' not in st.session_state:
+        st.session_state.planner_budget_max = 4000
+    if 'planner_interests' not in st.session_state:
+        st.session_state.planner_interests = ["Adventure", "Culture"]
+    if 'planner_weather' not in st.session_state:
+        st.session_state.planner_weather = 7
+    if 'planner_crowd' not in st.session_state:
+        st.session_state.planner_crowd = 5
+
     # Create form
     with st.form("planner_form"):
         st.markdown("""
@@ -462,11 +476,16 @@ def render_trip_planner():
         with col1:
             travel_style = st.selectbox(
                 "Travel Style",
-                ["Solo", "Couple", "Family", "Friends", "Business"]
+                ["Solo", "Couple", "Family", "Friends", "Business"],
+                index=["Solo", "Couple", "Family", "Friends", "Business"].index(
+                    st.session_state.planner_travel_style
+                )
             )
             
-            budget_min = st.number_input("Minimum Budget ($)", min_value=500, max_value=10000, value=1500, step=500)
-            budget_max = st.number_input("Maximum Budget ($)", min_value=500, max_value=10000, value=4000, step=500)
+            budget_min = st.number_input("Minimum Budget ($)", min_value=500, max_value=10000,
+                                          value=st.session_state.planner_budget_min, step=500)
+            budget_max = st.number_input("Maximum Budget ($)", min_value=500, max_value=10000,
+                                          value=st.session_state.planner_budget_max, step=500)
             
             start_date = st.date_input("Start Date", datetime.now())
             end_date = st.date_input("End Date", datetime.now() + timedelta(days=7))
@@ -475,61 +494,71 @@ def render_trip_planner():
             interests = st.multiselect(
                 "Interests",
                 ["Adventure", "Culture", "Luxury", "Nature", "Urban", "Beach", "Wellness", "Food"],
-                default=["Adventure", "Culture"]
+                default=st.session_state.planner_interests
             )
             
-            weather_priority = st.slider("Weather Importance", 1, 10, 7)
-            crowd_tolerance = st.slider("Crowd Tolerance", 1, 10, 5)
+            weather_priority = st.slider("Weather Importance", 1, 10, st.session_state.planner_weather)
+            crowd_tolerance = st.slider("Crowd Tolerance", 1, 10, st.session_state.planner_crowd)
             
             st.markdown("<br>", unsafe_allow_html=True)
-            # Submit button - YAHI SE FORM KHATAM HOGA
             submitted = st.form_submit_button("🎯 Find Confident Matches", type="primary", use_container_width=True)
         
         st.markdown("</div>", unsafe_allow_html=True)
     
-    # Handle form submission - YAHAN PAR FORM KE BAHAR CHECK KAREIN
+    # Handle form submission
     if submitted:
-        with st.spinner("🔍 Analyzing destinations and calculating confidence scores..."):
-            # Get user profile (may be None)
-            user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
-            
-            prefs = {
-                "travel_style": travel_style,
-                "budget_min": budget_min,
-                "budget_max": budget_max,
-                "travel_dates": (start_date.isoformat(), end_date.isoformat()),
-                "interests": interests,
-                "weather_priority": weather_priority,
-                "crowd_tolerance": crowd_tolerance,
-                "travel_dna": user_profile
-            }
-            
-            # Get all destinations
-            destinations = data_store.get_all_destinations()
-            
-            # Calculate recommendations
-            recs = confidence_engine.calculate_recommendations(destinations, prefs)
-            
-            # Store in session state
-            if recs and len(recs) > 0:
-                st.session_state.recommendations = recs
-                st.success(f"✅ Found {len(recs)} matching destinations! Check the Recommendations tab.")
-                # Switch to recommendations tab
-                st.session_state.active_tab = 2
-                st.rerun()
-            else:
-                st.error("❌ No destinations match your criteria. Try adjusting your filters.")
+        # Persist form values to session state
+        st.session_state.planner_travel_style = travel_style
+        st.session_state.planner_budget_min = budget_min
+        st.session_state.planner_budget_max = budget_max
+        st.session_state.planner_interests = interests
+        st.session_state.planner_weather = weather_priority
+        st.session_state.planner_crowd = crowd_tolerance
 
-def render_recommendations():
-    """Render recommendations - FIXED VERSION with proper cards"""
-    st.markdown("<h2>🎯 Your Confidence-Backed Matches</h2>", unsafe_allow_html=True)
-    
-    if not st.session_state.recommendations:
-        st.info("👆 Go to Trip Planner to get your personalized recommendations")
-        return
-    
-    recs = st.session_state.recommendations
-    
+        if budget_min >= budget_max:
+            st.error("❌ Maximum budget must be greater than minimum budget.")
+        else:
+            with st.spinner("🔍 Analyzing destinations and calculating confidence scores..."):
+                user_profile = st.session_state.user_profile if st.session_state.user_profile else {}
+                
+                prefs = {
+                    "travel_style": travel_style,
+                    "budget_min": budget_min,
+                    "budget_max": budget_max,
+                    "travel_dates": (start_date.isoformat(), end_date.isoformat()),
+                    "interests": interests if interests else ["Adventure"],
+                    "weather_priority": weather_priority,
+                    "crowd_tolerance": crowd_tolerance,
+                    "travel_dna": user_profile
+                }
+                
+                destinations = data_store.get_all_destinations()
+                recs = confidence_engine.calculate_recommendations(destinations, prefs)
+                
+                if recs:
+                    st.session_state.recommendations = recs
+                    st.success(f"✅ Found {len(recs)} matching destinations! Results shown below and in the Recommendations tab.")
+                else:
+                    st.error("❌ No destinations match your criteria. Try adjusting your filters.")
+
+    # ── INLINE RESULTS (persist via session state) ──────────────────────────
+    if st.session_state.recommendations:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(26,26,46,0.9));
+            border: 2px solid #00d4ff;
+            border-radius: 20px;
+            padding: 25px 30px;
+            margin: 30px 0 10px 0;
+        ">
+            <h3 style="color:#00d4ff; margin:0 0 5px 0;">🎯 Your Confidence-Backed Matches</h3>
+            <p style="color:#cccccc; margin:0; font-size:0.95rem;">Scroll down to see all results — they stay here even if you adjust filters.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        _render_recommendation_cards(st.session_state.recommendations, prefix="planner")
+
+def _render_recommendation_cards(recs, prefix="rec"):
+    """Shared helper — renders recommendation cards for a given list."""
     for i, rec in enumerate(recs[:6]):  # Show top 6
         conf = rec['confidence_score']
         
@@ -648,11 +677,40 @@ def render_recommendations():
             with col_e3:
                 st.markdown(f"**💰 Estimated Cost:** ${rec['average_cost']:,}")
                 st.markdown(f"**📅 Duration:** 7 Days")
-                if st.button(f"✅ Book with Confidence", key=f"book_{i}", use_container_width=True):
+                if st.button(f"✅ Book with Confidence", key=f"book_{prefix}_{i}", use_container_width=True):
                     st.balloons()
                     st.success(f"✨ Great choice! Your booking for {rec['name']} has been initiated. Check your email for confirmation details.")
             
             st.divider()
+
+def render_recommendations():
+    """Render Recommendations tab — reads from session state."""
+    st.markdown("<h2>\U0001f3af Your Confidence-Backed Matches</h2>", unsafe_allow_html=True)
+    
+    if not st.session_state.recommendations:
+        st.markdown("""
+        <div style="
+            text-align: center;
+            padding: 60px 40px;
+            background: rgba(255,255,255,0.03);
+            border: 2px dashed #00d4ff;
+            border-radius: 20px;
+            margin: 30px 0;
+        ">
+            <p style="font-size: 3rem; margin-bottom: 20px;">&#x1F9ED;</p>
+            <h3 style="color: #00d4ff; margin-bottom: 15px;">No matches yet!</h3>
+            <p style="color: #cccccc; font-size: 1rem;">
+                Head over to the <strong style="color:#ffffff;">Trip Planner</strong> tab,
+                fill in your preferences, and click
+                <strong style="color:#00d4ff;">&#x1F3AF; Find Confident Matches</strong>.<br><br>
+                Your personalised results will appear here and in the Trip Planner instantly.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+    
+    recs = st.session_state.recommendations
+    _render_recommendation_cards(recs, prefix="tab")
 
 def render_destination_explorer():
     """Render destination explorer"""
