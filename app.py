@@ -514,7 +514,7 @@ def render_trip_planner():
                     st.error("❌ No destinations match your criteria. Try adjusting your filters.")
 
 def render_recommendations():
-    """Render recommendations - COMPLETELY FIXED VERSION"""
+    """Render recommendations - FIXED VERSION with proper cards"""
     st.markdown("<h2>🎯 Your Confidence-Backed Matches</h2>", unsafe_allow_html=True)
     
     if not st.session_state.recommendations:
@@ -523,113 +523,127 @@ def render_recommendations():
     
     recs = st.session_state.recommendations
     
-    for i, rec in enumerate(recs[:6]):
+    for i, rec in enumerate(recs[:6]):  # Show top 6
         conf = rec['confidence_score']
         
-        # Determine color based on confidence
+        # Determine color and badge based on confidence
         if conf >= 85:
             color = "#00ff00"
-            badge = "Excellent Match"
+            badge = "🌟 Excellent Match"
+            badge_color = "#00ff00"
         elif conf >= 70:
             color = "#00d4ff"
-            badge = "Great Match"
+            badge = "✨ Great Match"
+            badge_color = "#00d4ff"
         else:
             color = "#ffaa00"
-            badge = "Good Match"
+            badge = "👍 Good Match"
+            badge_color = "#ffaa00"
         
-        # Create a card-like container
+        # Create a beautiful card for each recommendation
         with st.container():
             st.markdown(f"""
             <div style="
-                background: rgba(255, 255, 255, 0.05);
+                background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(26, 26, 46, 0.95) 100%);
                 border: 2px solid #00d4ff;
                 border-radius: 20px;
                 padding: 25px;
                 margin: 20px 0;
+                box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
             ">
             </div>
             """, unsafe_allow_html=True)
             
-            # Title and confidence score
-            col_title, col_score = st.columns([3, 1])
-            with col_title:
-                st.subheader(f"📍 {rec['name']}, {rec['country']}")
-            with col_score:
-                st.markdown(f"<h2 style='color: {color}; text-align: right;'>{conf:.0f}%</h2>", unsafe_allow_html=True)
-                st.caption(badge)
+            # Header with title and confidence score
+            col1, col2, col3 = st.columns([3, 1, 1])
+            with col1:
+                st.markdown(f"### 📍 {rec['name']}, {rec['country']}")
+                st.markdown(f"<span style='color: #00d4ff; font-size: 0.9rem;'>{rec['category']} • Best in {rec['best_season']}</span>", unsafe_allow_html=True)
+            with col2:
+                st.markdown(f"<h1 style='color: {color}; text-align: right; margin-bottom: 0;'>{conf:.0f}%</h1>", unsafe_allow_html=True)
+            with col3:
+                st.markdown(f"<div style='background: {badge_color}20; border: 1px solid {badge_color}; border-radius: 20px; padding: 5px 10px; text-align: center;'><span style='color: {badge_color}; font-weight: 600;'>{badge}</span></div>", unsafe_allow_html=True)
             
-            # Details in columns
-            col_d1, col_d2, col_d3, col_d4 = st.columns(4)
-            with col_d1:
-                st.markdown(f"**Category:** {rec['category']}")
-            with col_d2:
-                st.markdown(f"**Duration:** 7 Days")
-            with col_d3:
-                st.markdown(f"**Budget:** ${rec['average_cost']:,}")
-            with col_d4:
-                st.markdown(f"**Best Season:** {rec['best_season']}")
+            st.markdown("<br>", unsafe_allow_html=True)
             
             # Description
-            st.write(rec['description'])
+            st.markdown(f"""
+            <div style="
+                background: rgba(0, 0, 0, 0.3);
+                border-left: 3px solid #00d4ff;
+                padding: 15px;
+                border-radius: 10px;
+                margin: 15px 0;
+            ">
+                <p style="color: #ffffff; font-style: italic; margin: 0;">"{rec['description']}"</p>
+            </div>
+            """, unsafe_allow_html=True)
             
-            # Metrics
+            # Highlights
+            highlights = rec.get('highlights', [])
+            if highlights:
+                st.markdown("**✨ Highlights:** " + " • ".join(highlights[:4]))
+            
+            # Metrics in a grid
             col_m1, col_m2, col_m3, col_m4 = st.columns(4)
             with col_m1:
-                st.metric("Budget Fit", f"{rec.get('budget_score', 7):.1f}/10")
+                st.metric("Budget Fit", f"{rec.get('budget_score', 7):.1f}/10", delta=None, delta_color="off")
             with col_m2:
-                st.metric("DNA Match", f"{rec.get('dna_match', 7):.1f}/10")
+                st.metric("DNA Match", f"{rec.get('dna_match', 7):.1f}/10", delta=None, delta_color="off")
             with col_m3:
-                st.metric("Weather", f"{rec.get('weather_score', 7):.1f}/10")
+                st.metric("Weather", f"{rec.get('weather_score', 7):.1f}/10", delta=None, delta_color="off")
             with col_m4:
-                st.metric("Crowds", f"{rec.get('crowd_score', 7):.1f}/10")
+                st.metric("Crowd Level", f"{rec.get('crowd_score', 7):.1f}/10", delta=None, delta_color="off")
             
-            # Expanders
+            # Expanders for more info
             col_e1, col_e2, col_e3 = st.columns(3)
             
             with col_e1:
                 with st.expander("🔍 Why this trip?"):
                     category = rec.get('category', '').lower()
                     if "adventure" in category:
-                        st.write("Perfect for thrill-seekers with exciting activities and breathtaking landscapes.")
+                        st.write("Perfect for thrill-seekers! You'll find exciting activities, breathtaking landscapes, and authentic experiences that match your adventurous spirit.")
                     elif "cultural" in category:
-                        st.write("Rich in history and culture with authentic local experiences.")
+                        st.write("Rich in history and culture! You'll immerse yourself in local traditions, explore ancient sites, and gain deep cultural understanding.")
                     elif "luxury" in category:
-                        st.write("Premium accommodations and exclusive experiences await you.")
+                        st.write("Indulge in premium experiences! From 5-star accommodations to exclusive services, every detail is crafted for your comfort and enjoyment.")
                     elif "nature" in category:
-                        st.write("Connect with nature in this stunning natural paradise.")
+                        st.write("Connect with nature! You'll find peace in stunning landscapes, encounter wildlife, and rejuvenate in pristine environments.")
                     elif "urban" in category:
-                        st.write("Experience the vibrant city life and modern attractions.")
+                        st.write("Experience vibrant city life! World-class dining, entertainment, and endless exploration opportunities await you.")
                     elif "beach" in category:
-                        st.write("Relax on beautiful beaches and enjoy the coastal lifestyle.")
+                        st.write("Relax and unwind! Beautiful beaches, crystal-clear waters, and laid-back vibes create the perfect escape.")
                     elif "wellness" in category:
-                        st.write("Rejuvenate your mind and body in this peaceful setting.")
+                        st.write("Rejuvenate mind and body! Spa treatments, yoga retreats, and peaceful surroundings help you find balance and inner peace.")
                     else:
-                        st.write("This destination aligns perfectly with your preferences.")
+                        st.write("This destination aligns perfectly with your preferences and travel style.")
             
             with col_e2:
                 with st.expander("⚖️ Regret Preview"):
                     category = rec.get('category', '').lower()
                     if "adventure" in category:
-                        st.write("⚠️ Physical demands and rustic conditions may challenge you if you prefer luxury.")
+                        st.write("⚠️ If you prefer predictable plans and luxury accommodations, the physical demands and rustic conditions might challenge you.")
                     elif "cultural" in category:
-                        st.write("⚠️ Structured activities might feel overwhelming if you seek pure relaxation.")
+                        st.write("⚠️ If you primarily seek relaxation or nightlife, the focus on structured cultural activities might feel overwhelming.")
                     elif "luxury" in category:
-                        st.write("⚠️ May feel less authentic if you prefer rugged, budget-friendly experiences.")
+                        st.write("⚠️ If you're seeking authentic, rugged experiences, the premium environment might feel less genuine and more curated.")
                     elif "nature" in category:
-                        st.write("⚠️ Remote location might feel isolating if you need constant connectivity.")
+                        st.write("⚠️ If you crave urban excitement and constant connectivity, the remote location might feel isolating at times.")
                     elif "urban" in category:
-                        st.write("⚠️ Constant energy and crowds could be overwhelming if you need peace.")
+                        st.write("⚠️ If you need solitude and quiet, the city's constant energy and crowds could be overwhelming.")
                     elif "beach" in category:
-                        st.write("⚠️ Extended beach time might feel less stimulating for adventure seekers.")
+                        st.write("⚠️ Adventure-seekers or culture enthusiasts might find extended beach time less stimulating after a few days.")
                     elif "wellness" in category:
-                        st.write("⚠️ Peaceful pace might be too gentle if you're looking for high-energy activities.")
+                        st.write("⚠️ Travelers seeking high-energy activities might find the peaceful pace too gentle and relaxing.")
                     else:
-                        st.write("⚠️ Consider timing and your personal preferences.")
+                        st.write("⚠️ Consider your personal preferences and timing when making your final decision.")
             
             with col_e3:
+                st.markdown(f"**💰 Estimated Cost:** ${rec['average_cost']:,}")
+                st.markdown(f"**📅 Duration:** 7 Days")
                 if st.button(f"✅ Book with Confidence", key=f"book_{i}", use_container_width=True):
                     st.balloons()
-                    st.success(f"✨ Booking initiated for {rec['name']}! Check your email for details.")
+                    st.success(f"✨ Great choice! Your booking for {rec['name']} has been initiated. Check your email for confirmation details.")
             
             st.divider()
 
