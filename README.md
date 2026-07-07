@@ -90,3 +90,14 @@ graph TD
     C -->|DNA Match| D
     D --> E[VoyageAI]
     E --> F[Personalized Confidence Report]
+
+
+## 📞 Contact
+
+- **Project Maintainer**: Nishant Raj
+- **Email**: nishantraj6581@gmail.com
+- **GitHub Profile**: [@thenishantraj](https://github.com/thenishantraj)
+
+<div align="center">
+  
+Made with ❤️ and 🤖 by **Nishant Raj**
